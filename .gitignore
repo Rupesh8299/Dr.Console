@@ -1,0 +1,75 @@
+# ========================
+# Dr. Console — .gitignore
+# ========================
+
+# Secrets (NEVER commit!)
+.env
+.env.local
+.env.production
+*.env
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+
+# ========================
+# PYTHON (Backend)
+# ========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+venv/
+env/
+.venv/
+backend/venv/
+
+# ========================
+# MODEL FILES
+# Note: Models are ~9MB each. Keep them tracked so the repo is self-contained.
+# If you get GitHub push errors, uncomment these lines and use Git LFS instead.
+# *.h5
+# *.keras
+# *.tflite
+# ========================
+
+# ========================
+# NODE / REACT (Frontend)
+# ========================
+node_modules/
+frontend/node_modules/
+npm-debug.log*
+yarn-error.log*
+.npm/
+
+# Build output
+frontend/dist/
+frontend/build/
+.next/
+
+# ========================
+# DATA
+# ========================
+backend/data/*.csv
+
+# ========================
+# LOGS & TEMP
+# ========================
+*.log
+*.tmp
+*.temp
+
+# SQLite local DB
+*.db
+*.sqlite3

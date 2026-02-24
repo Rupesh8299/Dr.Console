@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+google-generativeai
+python-multipart
+python-dotenv
+supabase
+Pillow
+requests
+gradio_client
+langgraph
+langchain
+langchain-google-genai
