@@ -15,5 +15,8 @@ class AgentState(TypedDict):
     session_id: str
     
     # Flags for flow control
-    is_emergency: bool
+    triage_level: str
     needs_medical_memory_update: str | None
+    
+    # RAG sources retrieved for the last response (surfaced to frontend)
+    rag_sources: list

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { User, MapPin, Activity, Heart, Calendar } from 'lucide-react';
 
-const Onboarding = ({ session, onComplete }) => {
+const Onboarding = ({ session, onComplete, existingProfile = null, onCancel = null }) => {
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         full_name: '',
@@ -13,10 +13,18 @@ const Onboarding = ({ session, onComplete }) => {
     });
 
     useEffect(() => {
-        if (session?.user?.user_metadata?.full_name) {
+        if (existingProfile) {
+            setFormData({
+                full_name: existingProfile.full_name || '',
+                age: existingProfile.age || '',
+                gender: existingProfile.gender || '',
+                region: existingProfile.region || '',
+                medical_history: existingProfile.medical_history || ''
+            });
+        } else if (session?.user?.user_metadata?.full_name) {
             setFormData(prev => ({ ...prev, full_name: session.user.user_metadata.full_name }));
         }
-    }, [session]);
+    }, [session, existingProfile]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -50,8 +58,8 @@ const Onboarding = ({ session, onComplete }) => {
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden">
                 <div className="bg-teal-600 p-6 text-white text-center">
                     <Activity className="w-12 h-12 mx-auto mb-4" />
-                    <h1 className="text-3xl font-bold mb-2">Welcome to Dr. Console</h1>
-                    <p className="text-teal-100">Let's get to know you better for personalized care.</p>
+                    <h1 className="text-3xl font-bold mb-2">{existingProfile ? 'Edit Profile' : 'Welcome to Dr. Console'}</h1>
+                    <p className="text-teal-100">{existingProfile ? 'Update your basic medical details below.' : 'Let\'s get to know you better for personalized care.'}</p>
                 </div>
 
                 <div className="p-8">
@@ -132,13 +140,24 @@ const Onboarding = ({ session, onComplete }) => {
                             </div>
                         </div>
 
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full bg-teal-600 text-white py-3 rounded-lg font-bold hover:bg-teal-700 transition-colors disabled:opacity-50 text-lg shadow-lg"
-                        >
-                            {loading ? 'Saving Profile...' : 'Complete Setup'}
-                        </button>
+                        <div className="flex gap-4 pt-4 w-full">
+                            {onCancel && (
+                                <button
+                                    type="button"
+                                    onClick={onCancel}
+                                    className="w-1/3 bg-gray-100 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-200 transition-colors text-lg"
+                                >
+                                    Cancel
+                                </button>
+                            )}
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className={`${onCancel ? 'w-2/3' : 'w-full'} bg-teal-600 text-white py-3 rounded-lg font-bold hover:bg-teal-700 transition-colors disabled:opacity-50 text-lg shadow-lg`}
+                            >
+                                {loading ? 'Saving...' : (existingProfile ? 'Update Details' : 'Complete Setup')}
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>

@@ -58,6 +58,11 @@ function App() {
     };
 
     const handleGuestStart = () => {
+        // Clear previous guest state to ensure it's a fresh, one-time consultation
+        localStorage.removeItem('drConsole_guest_messages');
+        localStorage.removeItem('drConsole_guest_currentSessionId');
+        localStorage.removeItem('drConsole_guest_triageLevel');
+
         // Generate a random session ID for the guest
         const randomId = crypto.randomUUID();
         setGuestSessionId(randomId);

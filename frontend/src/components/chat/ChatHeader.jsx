@@ -1,9 +1,15 @@
 import React, { useState, useRef } from 'react';
-import { Activity, Shield, LogOut, Upload, User, Camera, Plus, Settings, Menu } from 'lucide-react';
+import { Activity, Shield, LogOut, Upload, User, Camera, Plus, Settings, Menu, FileText } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import ImageCropper from './ImageCropper';
 
-const ChatHeader = ({ isEmergency, userName, userAvatar, onProfileUpdate, onSignOut, onOpenLegal, onToggleSidebar }) => {
+const ChatHeader = ({ triageLevel, userName, userAvatar, onProfileUpdate, onSignOut, onOpenLegal, onToggleSidebar, onGenerateReport, onEditProfile }) => {
+    const isEmergency = triageLevel === 'Red';
+    
+    let headerBgClass = 'bg-white/20';
+    if (triageLevel === 'Red') headerBgClass = 'bg-red-600/90';
+    else if (triageLevel === 'Yellow') headerBgClass = 'bg-amber-100/60';
+    else if (triageLevel === 'Green') headerBgClass = 'bg-teal-100/60';
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [imageToCrop, setImageToCrop] = useState(null); // URL of selected image for cropping
@@ -68,7 +74,7 @@ const ChatHeader = ({ isEmergency, userName, userAvatar, onProfileUpdate, onSign
 
     return (
         <>
-            <header className={`shadow-sm sticky top-0 z-50 transition-colors duration-500 border-b border-white/20 ${isEmergency ? 'bg-red-600/90 backdrop-blur-md' : 'bg-white/20 backdrop-blur-md'}`}>
+            <header className={`shadow-sm sticky top-0 z-50 transition-colors duration-500 border-b border-white/20 backdrop-blur-md ${headerBgClass}`}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <button
@@ -88,12 +94,21 @@ const ChatHeader = ({ isEmergency, userName, userAvatar, onProfileUpdate, onSign
                             </div>
                         </div>
                     </div>
-                    <div className={`flex items-center gap-6 text-sm font-medium ${isEmergency ? 'text-red-100' : 'text-gray-500'}`}>
+                    <div className={`flex items-center gap-4 sm:gap-6 text-sm font-medium ${isEmergency ? 'text-red-100' : 'text-gray-500'}`}>
+                        <button
+                            onClick={onGenerateReport}
+                            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-colors ${isEmergency ? 'border-red-400 bg-red-500 text-white hover:bg-red-400' : 'border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100'}`}
+                            title="Generate Medical SOAP Report"
+                        >
+                            <FileText className="w-4 h-4" />
+                            <span className="hidden md:inline">Generate Report</span>
+                        </button>
+
                         <button
                             onClick={() => onOpenLegal('disclaimer')}
                             className={`flex items-center gap-1 transition-colors ${isEmergency ? 'hover:text-white' : 'hover:text-teal-600'}`}
                         >
-                            <Shield className="w-4 h-4" /> Disclaimer
+                            <Shield className="w-4 h-4" /> <span className="hidden sm:inline">Disclaimer</span>
                         </button>
 
                         {/* User Profile Dropdown */}
@@ -152,8 +167,14 @@ const ChatHeader = ({ isEmergency, userName, userAvatar, onProfileUpdate, onSign
 
                                         <h3 className="mt-3 text-xl font-normal text-gray-800">Hi, {userName}!</h3>
 
-                                        <button className="mt-4 px-6 py-2 rounded-full border border-gray-300 hover:bg-gray-50 text-sm font-medium transition-colors text-teal-700">
-                                            Manage your Dr. Console Account
+                                        <button 
+                                            onClick={() => {
+                                                setIsMenuOpen(false);
+                                                if (onEditProfile) onEditProfile();
+                                            }}
+                                            className="mt-4 px-6 py-2 rounded-full border border-gray-300 hover:bg-gray-50 text-sm font-medium transition-colors text-teal-700"
+                                        >
+                                            Edit your Details
                                         </button>
                                     </div>
 

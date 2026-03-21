@@ -5,12 +5,12 @@ from openai import AsyncOpenAI
 from config import settings
 from database.supabase_client import supabase
 
-# Initialize OpenRouter Client
+# Initialize NVIDIA Client
 aclient = None
-if settings.OPENROUTER_API_KEY:
+if settings.NVIDIA_API_KEY:
     aclient = AsyncOpenAI(
-        api_key=settings.OPENROUTER_API_KEY,
-        base_url=settings.OPENROUTER_BASE_URL,
+        api_key=settings.NVIDIA_API_KEY,
+        base_url=settings.NVIDIA_BASE_URL,
     )
 
 SYSTEM_PROMPT = """
@@ -18,22 +18,29 @@ You are Dr. Console, an advanced AI Medical Assistant.
 Your goal is to provide helpful, accurate, and safe health guidance.
 
 OUTPUT FORMAT:
-You must ALWAYS return a valid JSON object with the following structure:
+You must ALWAYS return a valid JSON object wrapped inside a ```json ... ``` codeblock with the following structure:
+```json
 {
     "response": "Your conversational response here...",
-    "is_emergency": boolean, // true if the user describes a life-threatening situation
+    "triage_level": "Green", // Must be one of: "Green", "Yellow", "Red", or "Pending"
     "medical_summary_update": "Optional string. If the user provides NEW, PERMANENT medical info (e.g., 'I have diabetes', 'I am allergic to nuts'), summarize it here to update their long-term medical memory. Otherwise null."
 }
+```
 
-PROTOCOL:
-1. TRIAGE FIRST: If the user presents symptoms, assess the situation.
-2. EMERGENCY DETECTION: If symptoms suggest a life-threatening emergency, set "is_emergency": true and IMMEDIATELY advise calling emergency services (112).
-3. VISUAL DATA INTEGRATION: You may receive "[SYSTEM: Image Analysis Result]" in the input. This is trustworthy data from a specialized local AI model. Use this diagnosis (and its confidence score) to inform your advice. If confidence is high (>80%), treat it as a strong indicator. If low, advise the user to retake the photo or consult a doctor for a physical check.
-4. MEMORY: You have access to the user's "Medical Memory". Use it to provide context-aware advice (e.g., avoiding allergens known in memory).
-5. EMPATHY & CLARITY: Be empathetic but professional. Use clear, simple language.
-6. DISCLAIMER: Always remind the user you are an AI and this is not a substitute for professional medical advice.
+TRIAGE PROTOCOL & OTC GUIDANCE:
+Analyze the patient context over the conversation and assign a `triage_level`:
+- "Pending": If the conversation just started and symptoms aren't completely clear. You MUST ask 1-2 clarifying questions to understand the severity, duration, or related symptoms before jumping to a diagnosis.
+- "Green": Mild symptoms or self-care appropriate. You MUST explicitly provide generic OTC (Over-The-Counter) drug recommendations and home-care steps in your `response`.
+- "Yellow": Doctor consultation is recommended / routine issue. You MUST provide symptom-relief OTC recommendations to help them until they see a doctor.
+- "Red": Life-threatening emergency. Immediately advise calling emergency services (112).
 
-Start every interaction with a warm, professional greeting if it's the start of a conversation.
+ADDITIONAL RULES:
+1. MANDATORY DEMOGRAPHICS: If the patient has not yet provided basic demographic details (AGE and GENDER), you MUST ask for them before giving any diagnosis or detailed advice. This is crucial for vulnerable group analysis.
+2. CLINICAL INTERVIEW FIRST: DO NOT instantly diagnose or suggest treatments on the first vague message (e.g. "I have a headache"). You must act like a real doctor and gather context first. Keep triage_level as "Pending" while gathering info.
+3. VISUAL DATA INTEGRATION: You may receive "[SYSTEM: Image Analysis Result]" in the input. Use this diagnosis and confidence score to inform your advice. If confidence is low, advise physical check.
+4. MEMORY: You have access to "Medical Memory". Use it to avoid dangerous drug interactions.
+5. EMPATHY & CLARITY: Be empathetic but professional. 
+6. DISCLAIMER: Always remind the user you are an AI.
 """
 
 async def process_chat(session_id: str, messages: list, context_instruction=None):
@@ -42,7 +49,7 @@ async def process_chat(session_id: str, messages: list, context_instruction=None
     messages: List of LangChain Message objects (HumanMessage, AIMessage, SystemMessage)
     """
     if not aclient:
-        return {"response": "System Error: OpenRouter API Key not configured.", "is_emergency": False}
+        return {"response": "System Error: NVIDIA API Key not configured.", "is_emergency": False}
 
     # Construct messages payload
     api_messages = [
@@ -66,26 +73,78 @@ async def process_chat(session_id: str, messages: list, context_instruction=None
         completion = await aclient.chat.completions.create(
             model=settings.MODEL_NAME,
             messages=api_messages,
-            response_format={"type": "json_object"} 
+            stream=True
         )
         
-        response_text = completion.choices[0].message.content
+        response_text = ""
+        async for chunk in completion:
+            if chunk.choices and len(chunk.choices) > 0:
+                reasoning = getattr(chunk.choices[0].delta, "reasoning_content", None)
+                content = getattr(chunk.choices[0].delta, "content", None)
+                if reasoning:
+                    response_text += reasoning
+                if content:
+                    response_text += content
+                
+        print(f"DEBUG: NVIDIA Response text extracted via stream: {response_text[:100]}...")
         
         # Parse JSON
+        import re
         try:
+            # Look for a markdown JSON block explicitly since the model talks out loud first
+            match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_text, re.DOTALL)
+            if match:
+                return json.loads(match.group(1))
+            
+            # Fallback heuristic: find the last occurrence of the "response" key to anchor start
+            idx = response_text.rfind('"response"')
+            if idx != -1:
+                start_idx = response_text.rfind("{", 0, idx)
+                end_idx = response_text.rfind("}") + 1
+                if start_idx != -1 and end_idx != -1:
+                    json_part = response_text[start_idx:end_idx]
+                    return json.loads(json_part)
+                
+            # Final fallback
+            if "{" in response_text and "}" in response_text:
+                json_part = response_text[response_text.find("{"):response_text.rfind("}")+1]
+                return json.loads(json_part)
+                
             return json.loads(response_text)
-        except json.JSONDecodeError:
-            return {
-                "response": response_text,
-                "is_emergency": False,
-                "medical_summary_update": None
-            }
+            
+        except json.JSONDecodeError as e:
+            print(f"DEBUG EXCEPTION parsing JSON: {e}")
+            import re
+            try:
+                # Regex fallback to extract the response if JSON parsing completely fails due to unescaped characters/newlines
+                resp_match = re.search(r'"response"\s*:\s*"([\s\S]*?)"\s*(?:,\s*"triage_level"|,\s*"medical_summary_update"|})', response_text)
+                if resp_match:
+                    clean_resp = resp_match.group(1).replace('\\n', '\n').replace('\\"', '"')
+                    
+                    triage_match = re.search(r'"triage_level"\s*:\s*"([^"]+)"', response_text)
+                    t_val = triage_match.group(1) if triage_match else "Pending"
+                    return {
+                        "response": clean_resp,
+                        "triage_level": t_val,
+                        "medical_summary_update": None
+                    }
+                else:
+                    raise Exception("Regex fallback failed to extract response")
+            except Exception as e2:
+                print(f"Fallback extraction failed: {e2}")
+                # Brutal final fallback: just strip syntax
+                clean_response = response_text.replace('```json', '').replace('```', '').replace('{', '').replace('}', '').replace('"response":', '').strip()
+                return {
+                    "response": clean_response,
+                    "triage_level": "Pending",
+                    "medical_summary_update": None
+                }
             
     except Exception as e:
-        print(f"OpenRouter/Gemini Error: {e}")
+        print(f"NVIDIA API Error: {e}")
         return {
             "response": f"I apologize, but I encountered an error: {str(e)}",
-            "is_emergency": False,
+            "triage_level": "Pending",
             "medical_summary_update": None
         }
 

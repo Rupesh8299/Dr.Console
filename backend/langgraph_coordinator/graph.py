@@ -38,18 +38,23 @@ async def reasoning_node(state: AgentState):
         )
 
     # 2. RAG Retrieval (Medical Knowledge)
-    # Search for relevant medical docs based on the user's message
     rag_docs = await search_medical_docs(query=message_content, limit=3)
+    rag_sources = []
     if rag_docs:
         rag_context = format_docs_for_context(rag_docs)
         context_instruction += f"\n{rag_context}\n"
         print(f"RAG: Retrieved {len(rag_docs)} documents.")
+        # Build clean source list for frontend display
+        for doc in rag_docs:
+            rag_sources.append({
+                "topic": doc.get("metadata", {}).get("topic", "Medical Reference"),
+                "content": doc.get("content", "")[:300]  # Snippet (first 300 chars)
+            })
 
     # Call the Deep Reasoning Module (which handles Gemini/HF fallback)
-    # We adapt the module's signature to fit the node pattern
     response_data = await process_chat(
         session_id=state.get('session_id', 'unknown'),
-        messages=messages, # Pass full history
+        messages=messages,
         context_instruction=context_instruction
     )
     
@@ -58,8 +63,9 @@ async def reasoning_node(state: AgentState):
     
     return {
         "messages": [ai_msg],
-        "is_emergency": response_data.get('is_emergency', False),
-        "needs_medical_memory_update": response_data.get('medical_summary_update')
+        "triage_level": response_data.get('triage_level', 'Pending'),
+        "needs_medical_memory_update": response_data.get('medical_summary_update'),
+        "rag_sources": rag_sources
     }
 
 # --- Graph Construction ---

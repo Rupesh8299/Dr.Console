@@ -14,6 +14,7 @@ async def chat_endpoint(
     background_tasks: BackgroundTasks,
     message: str = Form(...), 
     session_id: str = Form(None),
+    guest_history: str = Form(None),
     file: UploadFile = File(None),
     authorization: str = Header(None)
 ):
@@ -122,13 +123,24 @@ async def chat_endpoint(
                         history_messages.append(AIMessage(content=row['content']))
             except Exception as e:
                 print(f"History Fetch Error: {e}")
+        elif user_id == "guest" and guest_history:
+            try:
+                # Load client-side state for ephemeral guest memory
+                historic_msgs = json.loads(guest_history)[-10:]
+                for msg in historic_msgs:
+                    if msg.get('role') == 'user':
+                        history_messages.append(HumanMessage(content=msg.get('content', '')))
+                    elif msg.get('role') == 'assistant':
+                        history_messages.append(AIMessage(content=msg.get('content', '')))
+            except Exception as e:
+                print(f"Guest History Parse Error: {e}")
 
         # Build Initial State
         initial_state = {
             "messages": history_messages + [HumanMessage(content=message)],
             "user_profile": user_metadata,
             "session_id": session_id or "guest_session",
-            "is_emergency": False, 
+            "triage_level": "Pending", 
             "needs_medical_memory_update": None
         }
         
@@ -141,8 +153,9 @@ async def chat_endpoint(
         
         response_data = {
             "response": ai_response_content,
-            "is_emergency": graph_result.get("is_emergency", False),
+            "triage_level": graph_result.get("triage_level", "Pending"),
             "medical_summary_update": graph_result.get("needs_medical_memory_update"),
+            "rag_sources": graph_result.get("rag_sources", []),
             "session_id": session_id
         }
         
@@ -164,7 +177,7 @@ async def chat_endpoint(
                     "session_id": session_id,
                     "role": "assistant",
                     "content": response_data["response"],
-                    "is_emergency": response_data.get("is_emergency", False)
+                    "is_emergency": response_data.get("triage_level") == "Red"
                 }).execute()
 
                 # Update Medical Memory
@@ -194,12 +207,35 @@ async def chat_endpoint(
              print("⚠️ Gemini Rate Limit Hit!")
              return {
                  "response": "System Overload (Rate Limit). Please try again in 60s.",
-                 "is_emergency": False,
+                 "triage_level": "Pending",
                  "medical_summary_update": None
              }
 
         return {
             "response": f"System Error: {str(e)}",
-            "is_emergency": False,
+            "triage_level": "Pending",
             "medical_summary_update": None
         }
+
+from pydantic import BaseModel
+from typing import List, Dict, Any, Optional
+from modules.report_generator.soap_engine import ReportGenerator
+
+class ReportRequest(BaseModel):
+    messages: List[Dict[str, Any]]
+    user_profile: Optional[Dict[str, Any]] = None
+
+@router.post("/report")
+async def generate_report_endpoint(request: ReportRequest):
+    """
+    Generates a structured SOAP report and Triage analysis 
+    based on the provided conversation history.
+    """
+    try:
+        report_data = ReportGenerator.generate_soap_report(
+            conversation_history=request.messages,
+            user_profile=request.user_profile
+        )
+        return report_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate report: {str(e)}")

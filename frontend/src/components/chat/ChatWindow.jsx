@@ -1,6 +1,59 @@
-import React from 'react';
-import { Activity, VolumeX, User, Stethoscope, Volume2, Send } from 'lucide-react';
+import React, { useState } from 'react';
+import { Activity, VolumeX, User, Stethoscope, Volume2, Send, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
 
+// --- RAG Sources Panel (collapsible) ---
+const SourcesPanel = ({ sources }) => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    if (!sources || sources.length === 0) return null;
+
+    return (
+        <div className="mt-3 border-t border-gray-100 pt-2">
+            <button
+                onClick={() => setIsOpen(prev => !prev)}
+                className="flex items-center gap-1.5 text-xs text-teal-600 hover:text-teal-800 font-medium transition-colors"
+            >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Medical Sources ({sources.length})</span>
+                {isOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+
+            {isOpen && (
+                <div className="mt-2 space-y-2">
+                    {sources.map((src, i) => (
+                        <div key={i} className="bg-teal-50 border border-teal-100 rounded-lg p-2.5">
+                            <p className="text-xs font-semibold text-teal-700 mb-1">
+                                📄 {src.topic || 'Medical Reference'}
+                            </p>
+                            <p className="text-xs text-gray-600 leading-relaxed line-clamp-3">
+                                {src.content}...
+                            </p>
+                        </div>
+                    ))}
+                    <p className="text-xs text-gray-400 italic">
+                        Sources: MedQuAD Medical Q&A Database
+                    </p>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// --- Text Formatter ---
+const renderFormattedText = (text) => {
+    if (!text) return '';
+    const normalizedText = text.replace(/\\n/g, '\n');
+    const parts = normalizedText.split(/(\*\*.*?\*\*)/g);
+    
+    return parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+            return <strong key={i} className="font-semibold">{part.slice(2, -2)}</strong>;
+        }
+        return <span key={i}>{part}</span>;
+    });
+};
+
+// --- Main Chat Window ---
 const ChatWindow = ({
     messages,
     isLoading,
@@ -51,11 +104,20 @@ const ChatWindow = ({
                                         <img src={msg.media} alt="User upload" className="max-w-full h-48 object-cover rounded-lg mb-3 border border-white/20" />
                                     )
                                 )}
-                                <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
+                                <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                                    {renderFormattedText(msg.content)}
+                                </p>
+
+                                {/* Voice + Sources row (AI messages only) */}
                                 {msg.role === 'assistant' && (
-                                    <button onClick={() => speak(msg.content)} className="mt-2 text-teal-600 hover:text-teal-800 opacity-50 hover:opacity-100 transition-opacity">
-                                        <Volume2 className="w-4 h-4" />
-                                    </button>
+                                    <>
+                                        <button onClick={() => speak(msg.content)} className="mt-2 text-teal-600 hover:text-teal-800 opacity-50 hover:opacity-100 transition-opacity">
+                                            <Volume2 className="w-4 h-4" />
+                                        </button>
+
+                                        {/* RAG Sources Panel */}
+                                        <SourcesPanel sources={msg.ragSources} />
+                                    </>
                                 )}
                             </div>
                         </div>
@@ -89,7 +151,7 @@ const ChatWindow = ({
                         onChange={(e) => setInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                         placeholder="Type your symptoms or ask a question..."
-                        className="flex-1 bg-transparent border-none focus:ring-0 text-gray-900 placeholder-gray-400 px-2"
+                        className="flex-1 bg-transparent border-none outline-none focus:outline-none focus:ring-0 shadow-none text-gray-900 placeholder-gray-400 px-2"
                     />
                     <button
                         onClick={() => handleSend()}

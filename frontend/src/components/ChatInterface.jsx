@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import ChatHeader from './chat/ChatHeader';
-import EmergencyBanner from './chat/EmergencyBanner';
+import TriageBanner from './chat/TriageBanner';
 import SessionSidebar from './chat/SessionSidebar';
 import VoiceInput from './chat/VoiceInput';
 import MediaUpload from './chat/MediaUpload';
@@ -9,6 +9,7 @@ import ChatWindow from './chat/ChatWindow';
 import Footer from './chat/Footer';
 import DeleteConfirmationModal from './chat/DeleteConfirmationModal';
 import { LogOut } from 'lucide-react';
+import Onboarding from './Onboarding';
 
 // Legal Components
 import LegalModal from './legal/LegalModal';
@@ -16,31 +17,74 @@ import Disclaimer from './legal/Disclaimer';
 import TermsOfService from './legal/TermsOfService';
 import PrivacyPolicy from './legal/PrivacyPolicy';
 import ContactSupport from './legal/ContactSupport';
+import ReportModal from './chat/ReportModal';
 
 const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSessionId, onExitGuest }) => {
     const isGuest = !!guestSessionId;
-    const [messages, setMessages] = useState([
-        { role: 'assistant', content: isGuest ? 'Hello! I am Dr. Console (Guest Mode). How can I help you today?' : 'Hello! I am Dr. Console. How can I help you today?' }
-    ]);
+
+    // Unique storage key per user (or 'guest') so sessions don't bleed into each other
+    const storageKey = isGuest ? 'drConsole_guest' : `drConsole_${session?.user?.id || 'unknown'}`;
+
+    const defaultWelcome = isGuest
+        ? 'Hello! I am Dr. Console (Guest Mode). To ensure I provide the most accurate health guidance, could you please tell me your name, age, gender, and your primary symptom today?'
+        : 'Hello! I am Dr. Console. How can I help you today?';
+
+    // Load persisted state from localStorage on first render
+    const loadSaved = (field, fallback) => {
+        try {
+            const saved = localStorage.getItem(`${storageKey}_${field}`);
+            return saved !== null ? JSON.parse(saved) : fallback;
+        } catch { return fallback; }
+    };
+
+    const [messages, setMessages] = useState(() =>
+        loadSaved('messages', [{ role: 'assistant', content: defaultWelcome }])
+    );
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isListening, setIsListening] = useState(false);
     const [isSpeaking, setIsSpeaking] = useState(false);
-    const [isEmergency, setIsEmergency] = useState(false);
+    const [triageLevel, setTriageLevel] = useState(() => loadSaved('triageLevel', 'Pending'));
     const [userName, setUserName] = useState(isGuest ? 'Guest' : 'User');
     const [sessions, setSessions] = useState([]);
-    const [currentSessionId, setCurrentSessionId] = useState(isGuest ? guestSessionId : null);
+    const [currentSessionId, setCurrentSessionId] = useState(() =>
+        isGuest ? guestSessionId : loadSaved('currentSessionId', null)
+    );
     const [selectedFile, setSelectedFile] = useState(null);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Default retracted
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     // Modal States
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [sessionToDelete, setSessionToDelete] = useState(null);
     const [activeLegalPage, setActiveLegalPage] = useState(null); // 'privacy', 'terms', 'contact', 'disclaimer'
 
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [reportData, setReportData] = useState(null);
+    const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+
+    // Profile Edit State
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
+
     const chatContainerRef = useRef(null);
     const fileInputRef = useRef(null);
     const recognitionRef = useRef(null);
+
+    // --- Persist state to localStorage whenever it changes ---
+    useEffect(() => {
+        try {
+            localStorage.setItem(`${storageKey}_messages`, JSON.stringify(messages));
+        } catch { /* quota exceeded — ignore */ }
+    }, [messages, storageKey]);
+
+    useEffect(() => {
+        if (!isGuest) {
+            localStorage.setItem(`${storageKey}_currentSessionId`, JSON.stringify(currentSessionId));
+        }
+    }, [currentSessionId, isGuest, storageKey]);
+
+    useEffect(() => {
+        localStorage.setItem(`${storageKey}_triageLevel`, JSON.stringify(triageLevel));
+    }, [triageLevel, storageKey]);
 
     useEffect(() => {
         // Auto-close sidebar on mobile by default
@@ -108,20 +152,20 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
         setIsLoading(true);
         await fetchHistory(sessionId);
         setIsLoading(false);
-        // On mobile, close sidebar after selection
-        if (window.innerWidth < 1024) {
-            setIsSidebarOpen(false);
-        }
+        // Automatically close sidebar after selection
+        setIsSidebarOpen(false);
     };
 
     const handleNewChat = () => {
         if (isGuest) return;
+        // Clear persisted state so the new blank session loads on refresh
+        localStorage.removeItem(`${storageKey}_messages`);
+        localStorage.removeItem(`${storageKey}_currentSessionId`);
+        localStorage.removeItem(`${storageKey}_triageLevel`);
         setCurrentSessionId(null);
         setMessages([{ role: 'assistant', content: 'Hello! I am Dr. Console. How can I help you today?' }]);
-        setIsEmergency(false);
-        if (window.innerWidth < 1024) {
-            setIsSidebarOpen(false);
-        }
+        setTriageLevel('Pending');
+        setIsSidebarOpen(false);
     };
 
     const promptDeleteSession = (sessionId) => {
@@ -235,6 +279,41 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
         setIsSpeaking(false);
     };
 
+    const handleGenerateReport = async () => {
+        setIsReportModalOpen(true);
+        setIsGeneratingReport(true);
+        setReportData(null); // Clear previous
+
+        try {
+            const headers = { 'Content-Type': 'application/json' };
+            if (!isGuest) {
+                const sessionStr = await supabase.auth.getSession();
+                if (sessionStr?.data?.session?.access_token) {
+                    headers['Authorization'] = `Bearer ${sessionStr.data.session.access_token}`;
+                }
+            }
+
+            const res = await fetch(`http://127.0.0.1:8000/chat/report`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    messages,
+                    user_profile: profile || null
+                })
+            });
+
+            if (!res.ok) throw new Error("Failed to generate report");
+            const data = await res.json();
+            setReportData(data);
+        } catch (error) {
+            console.error(error);
+            alert("Failed to generate the clinical report. Please try again.");
+            setIsReportModalOpen(false);
+        } finally {
+            setIsGeneratingReport(false);
+        }
+    };
+
     const handleSend = async (manualInput = null) => {
         const textToSend = manualInput || input;
 
@@ -262,6 +341,10 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
             if (sessionIdToSend) {
                 formData.append('session_id', sessionIdToSend);
             }
+            if (isGuest) {
+                // Guests don't have DB storage, so we must manually pass the client-side session array
+                formData.append('guest_history', JSON.stringify(messages));
+            }
             if (selectedFile) {
                 formData.append('file', selectedFile);
             }
@@ -286,19 +369,19 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
 
             const data = await response.json();
             const botResponse = data.response;
-            const emergencyStatus = data.is_emergency;
+            const newTriageLevel = data.triage_level;
+            const ragSources = data.rag_sources || [];
 
             if (!isGuest && data.session_id && !currentSessionId) {
                 setCurrentSessionId(data.session_id);
                 fetchSessions();
             }
 
-            if (emergencyStatus) {
-                setIsEmergency(true);
-                speak("Emergency detected. Please call 1 1 2 immediately.");
+            if (newTriageLevel && newTriageLevel !== 'Pending') {
+                setTriageLevel(newTriageLevel);
             }
 
-            setMessages(prev => [...prev, { role: 'assistant', content: botResponse }]);
+            setMessages(prev => [...prev, { role: 'assistant', content: botResponse, ragSources }]);
             speak(botResponse);
 
         } catch (error) {
@@ -356,24 +439,30 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
             {/* Conditional Header: Full Header for Users, Minimal Bar for Guests */}
             {!isGuest ? (
                 <ChatHeader
-                    isEmergency={isEmergency}
+                    triageLevel={triageLevel}
                     userName={userName}
                     userAvatar={profile?.avatar_url}
                     onProfileUpdate={onProfileUpdate}
                     onSignOut={handleSignOut}
                     onOpenLegal={setActiveLegalPage}
                     onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                    onGenerateReport={handleGenerateReport}
+                    onEditProfile={() => setIsEditingProfile(true)}
                 />
             ) : (
-                <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm sticky top-0 z-40">
+                <div className={`border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm sticky top-0 z-40 transition-colors duration-500 ${
+                    triageLevel === 'Red' ? 'bg-red-600/90 backdrop-blur-md' : 
+                    triageLevel === 'Yellow' ? 'bg-amber-50/80 backdrop-blur-md' : 
+                    triageLevel === 'Green' ? 'bg-teal-50/80 backdrop-blur-md' : 'bg-white'
+                }`}>
                     <div className="flex items-center gap-2">
-                        <span className="font-bold text-teal-700 text-lg">Dr. Console</span>
-                        <span className="bg-teal-100 text-teal-800 text-xs px-2 py-1 rounded-full font-medium">Guest Mode</span>
+                        <span className={`font-bold text-lg ${triageLevel === 'Red' ? 'text-white' : 'text-teal-700'}`}>Dr. Console</span>
+                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${triageLevel === 'Red' ? 'bg-red-500 text-white' : 'bg-teal-100 text-teal-800'}`}>Guest Mode</span>
                     </div>
                     <div>
                         <button
                             onClick={onExitGuest}
-                            className="text-gray-500 hover:text-red-500 font-medium flex items-center gap-1 transition-colors"
+                            className={`font-medium flex items-center gap-1 transition-colors ${triageLevel === 'Red' ? 'text-white hover:text-gray-200' : 'text-gray-500 hover:text-red-500'}`}
                         >
                             <LogOut className="w-4 h-4" /> End Session
                         </button>
@@ -381,7 +470,7 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
                 </div>
             )}
 
-            <EmergencyBanner isEmergency={isEmergency} />
+            <TriageBanner triageLevel={triageLevel} />
 
             <main className="max-w-[95rem] mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
                 <div className="flex gap-8 relative">
@@ -503,6 +592,29 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
             >
                 {legalContent.content}
             </LegalModal>
+
+            <ReportModal
+                isOpen={isReportModalOpen}
+                onClose={() => setIsReportModalOpen(false)}
+                reportData={reportData}
+                patientName={isGuest ? 'Guest' : profile?.full_name || 'Anonymous User'}
+                isGenerating={isGeneratingReport}
+            />
+
+            {/* Profile Editor Modal */}
+            {isEditingProfile && !isGuest && (
+                <div className="fixed inset-0 z-[100] animate-in fade-in zoom-in-95 duration-200">
+                    <Onboarding 
+                        session={session} 
+                        existingProfile={profile}
+                        onComplete={() => {
+                            setIsEditingProfile(false);
+                            onProfileUpdate(); 
+                        }}
+                        onCancel={() => setIsEditingProfile(false)}
+                    />
+                </div>
+            )}
         </div>
     );
 };
