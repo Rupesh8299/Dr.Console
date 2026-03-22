@@ -85,7 +85,7 @@ const ChatHeader = ({ triageLevel, userName, userAvatar, onProfileUpdate, onSign
                         </button>
 
                         <div className="flex items-center gap-2">
-                            <div className={`p-2 rounded-lg ${isEmergency ? 'bg-red-500' : 'bg-teal-100'}`}>
+                            <div className={`hidden lg:flex p-2 rounded-lg ${isEmergency ? 'bg-red-500' : 'bg-teal-100'}`}>
                                 <Activity className={`w-6 h-6 ${isEmergency ? 'text-white' : 'text-teal-600'}`} />
                             </div>
                             <div>
@@ -97,18 +97,18 @@ const ChatHeader = ({ triageLevel, userName, userAvatar, onProfileUpdate, onSign
                     <div className={`flex items-center gap-4 sm:gap-6 text-sm font-medium ${isEmergency ? 'text-red-100' : 'text-gray-500'}`}>
                         <button
                             onClick={onGenerateReport}
-                            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-colors ${isEmergency ? 'border-red-400 bg-red-500 text-white hover:bg-red-400' : 'border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100'}`}
+                            className={`flex items-center justify-center p-2.5 sm:px-3 sm:py-1.5 rounded-full sm:rounded-lg border transition-colors ${isEmergency ? 'border-red-400 bg-red-500 text-white hover:bg-red-400' : 'border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100'}`}
                             title="Generate Medical SOAP Report"
                         >
                             <FileText className="w-4 h-4" />
-                            <span className="hidden md:inline">Generate Report</span>
+                            <span className="hidden sm:inline sm:ml-1.5">Generate Report</span>
                         </button>
 
                         <button
                             onClick={() => onOpenLegal('disclaimer')}
-                            className={`flex items-center gap-1 transition-colors ${isEmergency ? 'hover:text-white' : 'hover:text-teal-600'}`}
+                            className={`hidden lg:flex items-center gap-1 transition-colors ${isEmergency ? 'hover:text-white' : 'hover:text-teal-600'}`}
                         >
-                            <Shield className="w-4 h-4" /> <span className="hidden sm:inline">Disclaimer</span>
+                            <Shield className="w-4 h-4" /> <span>Disclaimer</span>
                         </button>
 
                         {/* User Profile Dropdown */}

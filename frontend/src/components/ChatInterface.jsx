@@ -8,7 +8,7 @@ import MediaUpload from './chat/MediaUpload';
 import ChatWindow from './chat/ChatWindow';
 import Footer from './chat/Footer';
 import DeleteConfirmationModal from './chat/DeleteConfirmationModal';
-import { LogOut } from 'lucide-react';
+import { LogOut, FileText } from 'lucide-react';
 import Onboarding from './Onboarding';
 
 // Legal Components
@@ -18,6 +18,8 @@ import TermsOfService from './legal/TermsOfService';
 import PrivacyPolicy from './legal/PrivacyPolicy';
 import ContactSupport from './legal/ContactSupport';
 import ReportModal from './chat/ReportModal';
+
+const API_URL = `http://${window.location.hostname}:8000`;
 
 const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSessionId, onExitGuest }) => {
     const isGuest = !!guestSessionId;
@@ -64,10 +66,14 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
 
     // Profile Edit State
     const [isEditingProfile, setIsEditingProfile] = useState(false);
+    
+    // Mobile Tools Drawer State
+    const [isMobileToolsOpen, setIsMobileToolsOpen] = useState(false);
 
     const chatContainerRef = useRef(null);
     const fileInputRef = useRef(null);
     const recognitionRef = useRef(null);
+    const handleSendRef = useRef(null); // always points to latest handleSend
 
     // --- Persist state to localStorage whenever it changes ---
     useEffect(() => {
@@ -181,7 +187,7 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
 
         const sessionId = sessionToDelete.id;
         try {
-            const response = await fetch(`http://127.0.0.1:8000/sessions/${sessionId}`, {
+            const response = await fetch(`${API_URL}/sessions/${sessionId}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${session?.access_token}`,
@@ -231,7 +237,8 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
                 const transcript = event.results[0][0].transcript;
                 console.log("🎤 Voice Input Received:", transcript);
                 setInput(transcript);
-                handleSend(transcript);
+                // Use ref so we always call the latest handleSend (avoids stale closure)
+                handleSendRef.current?.(transcript);
             };
 
             recognitionRef.current.onend = () => {
@@ -241,6 +248,19 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
             recognitionRef.current.onerror = (event) => {
                 console.error("❌ Speech recognition error", event.error);
                 setIsListening(false);
+                if (event.error === 'not-allowed') {
+                    alert(
+                        "Microphone access was denied.\n\n" +
+                        "To fix this:\n" +
+                        "1. Click the 🔒 / ⓘ icon in your browser's address bar.\n" +
+                        "2. Set Microphone to \"Allow\".\n" +
+                        "3. Refresh the page and try again."
+                    );
+                } else if (event.error === 'network') {
+                    alert("Speech recognition needs an internet connection. Please check your network.");
+                } else if (event.error !== 'aborted') {
+                    alert(`Speech recognition error: ${event.error}. Please try again.`);
+                }
             };
         }
     }, []);
@@ -293,7 +313,7 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
                 }
             }
 
-            const res = await fetch(`http://127.0.0.1:8000/chat/report`, {
+            const res = await fetch(`${API_URL}/chat/report`, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({
@@ -354,7 +374,7 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
                 headers['Authorization'] = `Bearer ${session.access_token}`;
             }
 
-            const response = await fetch('http://127.0.0.1:8000/chat', {
+            const response = await fetch(`${API_URL}/chat`, {
                 method: 'POST',
                 headers: headers,
                 body: formData,
@@ -394,6 +414,11 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
             setIsLoading(false);
         }
     };
+
+    // Keep ref in sync so speech recognition always calls the latest handleSend
+    useEffect(() => {
+        handleSendRef.current = handleSend;
+    });
 
     const handleSignOut = async () => {
         if (onSignOut) {
@@ -435,7 +460,7 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
     const legalContent = getLegalModalContent();
 
     return (
-        <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
+        <div className="h-[100dvh] lg:h-auto lg:min-h-screen bg-gray-50 font-sans text-gray-800 flex flex-col">
             {/* Conditional Header: Full Header for Users, Minimal Bar for Guests */}
             {!isGuest ? (
                 <ChatHeader
@@ -450,7 +475,7 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
                     onEditProfile={() => setIsEditingProfile(true)}
                 />
             ) : (
-                <div className={`border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm sticky top-0 z-40 transition-colors duration-500 ${
+                <div className={`border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm flex-shrink-0 relative z-40 transition-colors duration-500 ${
                     triageLevel === 'Red' ? 'bg-red-600/90 backdrop-blur-md' : 
                     triageLevel === 'Yellow' ? 'bg-amber-50/80 backdrop-blur-md' : 
                     triageLevel === 'Green' ? 'bg-teal-50/80 backdrop-blur-md' : 'bg-white'
@@ -459,7 +484,7 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
                         <span className={`font-bold text-lg ${triageLevel === 'Red' ? 'text-white' : 'text-teal-700'}`}>Dr. Console</span>
                         <span className={`text-xs px-2 py-1 rounded-full font-medium ${triageLevel === 'Red' ? 'bg-red-500 text-white' : 'bg-teal-100 text-teal-800'}`}>Guest Mode</span>
                     </div>
-                    <div>
+                    <div className="flex items-center gap-3">
                         <button
                             onClick={onExitGuest}
                             className={`font-medium flex items-center gap-1 transition-colors ${triageLevel === 'Red' ? 'text-white hover:text-gray-200' : 'text-gray-500 hover:text-red-500'}`}
@@ -472,8 +497,8 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
 
             <TriageBanner triageLevel={triageLevel} />
 
-            <main className="max-w-[95rem] mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
-                <div className="flex gap-8 relative">
+            <main className="max-w-[95rem] w-full mx-auto px-0 lg:px-8 py-0 lg:py-8 relative lg:flex-none flex-1 min-h-0 flex flex-col">
+                <div className="flex-1 lg:flex-none min-h-0 lg:h-auto flex gap-8 relative">
                     {/* 1. Retractable Sidebar (Chat History ONLY) */}
                     <div className={`${isSidebarOpen ? 'w-80 opacity-100' : 'w-0 opacity-0 overflow-hidden'} transition-all duration-300 ease-in-out flex-shrink-0 hidden lg:block`}>
                         <div className="space-y-6 w-80">
@@ -502,21 +527,31 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
                     </div>
 
                     {/* Mobile Sidebar: Drawer (Chat History ONLY) */}
-                    <div className={`fixed inset-y-0 left-0 z-50 w-80 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out lg:hidden ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-                        <div className="p-6 space-y-6 overflow-y-auto h-full">
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-lg font-bold text-gray-800">History</h2>
-                                <button onClick={() => setIsSidebarOpen(false)} className="text-gray-500 p-2">✕</button>
-                            </div>
+                    <div className={`fixed inset-y-0 left-0 z-50 w-80 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out lg:hidden flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                        <div className="p-6 pb-4 border-b border-gray-100 flex justify-between items-center flex-shrink-0">
+                            <h2 className="text-lg font-bold text-gray-800">History</h2>
+                            <button onClick={() => setIsSidebarOpen(false)} className="text-gray-500 p-2 hover:bg-gray-100 rounded-lg transition-colors">✕</button>
+                        </div>
+
+                        <div className="p-6 space-y-6 overflow-y-auto flex-1">
 
                             {!isGuest && (
-                                <SessionSidebar
-                                    sessions={sessions}
-                                    currentSessionId={currentSessionId}
-                                    onSessionSelect={handleSessionSelect}
-                                    onNewChat={handleNewChat}
-                                    onDeleteSession={promptDeleteSession}
-                                />
+                                <div className="space-y-4">
+                                    <SessionSidebar
+                                        sessions={sessions}
+                                        currentSessionId={currentSessionId}
+                                        onSessionSelect={handleSessionSelect}
+                                        onNewChat={handleNewChat}
+                                        onDeleteSession={promptDeleteSession}
+                                    />
+                                    <button
+                                        onClick={() => { setIsSidebarOpen(false); handleGenerateReport(); }}
+                                        className="w-full mt-2 flex items-center justify-center gap-2 p-3 rounded-xl border border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100 font-medium transition-colors"
+                                    >
+                                        <FileText className="w-5 h-5" />
+                                        <span>Generate Report</span>
+                                    </button>
+                                </div>
                             )}
 
                             {isGuest && (
@@ -524,6 +559,16 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
                                     <p className="text-sm text-gray-500">Guest history is not saved.</p>
                                 </div>
                             )}
+                        </div>
+
+                        {/* Legal Links Footer */}
+                        <div className="p-6 pt-5 border-t border-gray-100 bg-gray-50/50 flex-shrink-0">
+                            <div className="flex flex-col space-y-4 text-sm font-medium text-gray-600">
+                                <button onClick={() => { setIsSidebarOpen(false); setActiveLegalPage('disclaimer'); }} className="text-left hover:text-teal-600 transition-colors">Disclaimer</button>
+                                <button onClick={() => { setIsSidebarOpen(false); setActiveLegalPage('privacy'); }} className="text-left hover:text-teal-600 transition-colors">Privacy</button>
+                                <button onClick={() => { setIsSidebarOpen(false); setActiveLegalPage('terms'); }} className="text-left hover:text-teal-600 transition-colors">Terms</button>
+                                <button onClick={() => { setIsSidebarOpen(false); setActiveLegalPage('contact'); }} className="text-left hover:text-teal-600 transition-colors">Contact</button>
+                            </div>
                         </div>
                     </div>
 
@@ -537,10 +582,29 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
 
 
                     {/* 2. Main Layout (Tools + Chat) */}
-                    <div className="flex-1 min-w-0">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="flex-1 min-w-0 flex flex-col">
+                        <div className="flex flex-col lg:grid lg:grid-cols-3 lg:gap-8 flex-1 min-h-0">
+                            
+                            {/* Mobile Overlay Background */}
+                            {isMobileToolsOpen && (
+                                <div 
+                                    className="fixed inset-0 bg-black/40 z-50 lg:hidden backdrop-blur-sm transition-opacity"
+                                    onClick={() => setIsMobileToolsOpen(false)}
+                                />
+                            )}
+
                             {/* Left Column: Tools (Voice & Media) */}
-                            <div className="space-y-6">
+                            <div className={`
+                                space-y-6 lg:space-y-0
+                                lg:flex lg:flex-col lg:gap-4 lg:h-[600px]
+                                lg:static lg:w-auto lg:p-0 lg:bg-transparent lg:shadow-none lg:z-auto lg:rounded-none lg:translate-y-0 lg:overflow-visible
+                                fixed inset-x-0 bottom-0 z-[60] bg-gray-50/95 backdrop-blur-xl p-6 pt-10 rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-300 ease-out max-h-[85vh] overflow-y-auto
+                                ${isMobileToolsOpen ? 'translate-y-0' : 'translate-y-[150%] lg:translate-y-0'}
+                            `}>
+                                {/* Mobile handle bar */}
+                                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-gray-300 rounded-full lg:hidden" 
+                                     onClick={() => setIsMobileToolsOpen(false)} />
+
                                 <VoiceInput
                                     isListening={isListening}
                                     toggleListening={toggleListening}
@@ -548,14 +612,17 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
 
                                 <MediaUpload
                                     selectedFile={selectedFile}
-                                    onFileSelect={handleFileSelect}
+                                    onFileSelect={(e) => {
+                                        handleFileSelect(e);
+                                        setIsMobileToolsOpen(false);
+                                    }}
                                     onClearFile={() => setSelectedFile(null)}
                                     fileInputRef={fileInputRef}
                                 />
                             </div>
 
                             {/* Right Column: Chat Window */}
-                            <div className="lg:col-span-2">
+                            <div className="lg:col-span-2 flex-1 flex flex-col min-h-0 lg:min-h-0">
                                 <ChatWindow
                                     messages={messages}
                                     isLoading={isLoading}
@@ -568,6 +635,7 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
                                     chatContainerRef={chatContainerRef}
                                     currentSessionTitle={isGuest ? 'Temporary Consultation' : currentSessionTitle}
                                     selectedFile={selectedFile}
+                                    onToggleMobileTools={() => setIsMobileToolsOpen(!isMobileToolsOpen)}
                                 />
                             </div>
                         </div>
@@ -575,7 +643,9 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
                 </div>
             </main>
 
-            <Footer onOpenLegal={setActiveLegalPage} />
+            <div className="hidden lg:block">
+                <Footer onOpenLegal={setActiveLegalPage} />
+            </div>
 
             <DeleteConfirmationModal
                 isOpen={isDeleteModalOpen}

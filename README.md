@@ -62,27 +62,46 @@ Dr. Console Project/
 ```bash
 cd backend
 python -m venv venv
-venv\Scripts\activate       # Windows
+venv\Scripts\activate         # Windows
+# venv/bin/activate            # macOS / Linux
 pip install -r requirements.txt
-uvicorn main:app --reload
+python -m uvicorn main:app --reload
 ```
 
 ### Frontend
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev          # localhost only
+npm run dev -- --host  # expose on LAN (access from mobile / other devices)
 ```
 
 ### Environment Variables
-Create `backend/.env`:
-```
-GEMINI_API_KEY=your_key_here
-SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_anon_key
+
+#### Backend — `backend/.env`
+```env
+# Google Gemini (legacy / image analysis fallback)
+GEMINI_API_KEY=your_gemini_api_key
+
+# NVIDIA NIM API (primary LLM — openai/gpt-oss-120b)
+NVIDIA_API_KEY=your_nvidia_api_key
+
+# Supabase
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 ```
 
----
+#### Frontend — `frontend/.env`
+```env
+# Supabase (public / anon key — safe to expose in browser)
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+> [!NOTE]
+> The backend uses the **Service Role Key** (full DB access, keep secret).
+> The frontend uses only the **Anon Key** (restricted by RLS policies).
+
 
 ## Models
 

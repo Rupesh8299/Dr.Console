@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, User, Activity, AlertCircle } from 'lucide-react';
 
+const API_URL = `http://${window.location.hostname}:8000`;
+
 const ProfileModal = ({ isOpen, onClose, onSave }) => {
     const [formData, setFormData] = useState({
         name: '',
@@ -19,7 +21,7 @@ const ProfileModal = ({ isOpen, onClose, onSave }) => {
     const fetchProfile = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch('http://127.0.0.1:8000/profile');
+            const response = await fetch(`${API_URL}/profile`);
             if (response.ok) {
                 const data = await response.json();
                 setFormData({
@@ -40,7 +42,7 @@ const ProfileModal = ({ isOpen, onClose, onSave }) => {
         e.preventDefault();
         setIsLoading(true);
         try {
-            const response = await fetch('http://127.0.0.1:8000/profile', {
+            const response = await fetch(`${API_URL}/profile`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

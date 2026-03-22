@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Activity, VolumeX, User, Stethoscope, Volume2, Send, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
+import { Activity, VolumeX, User, Stethoscope, Volume2, Send, BookOpen, ChevronDown, ChevronUp, Plus } from 'lucide-react';
 
 // --- RAG Sources Panel (collapsible) ---
 const SourcesPanel = ({ sources }) => {
@@ -65,10 +65,11 @@ const ChatWindow = ({
     handleSend,
     chatContainerRef,
     currentSessionTitle,
-    selectedFile
+    selectedFile,
+    onToggleMobileTools
 }) => {
     return (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 h-[600px] flex flex-col">
+        <div className="bg-white lg:rounded-2xl lg:shadow-sm lg:border lg:border-gray-100 flex-1 flex flex-col min-h-0 lg:h-[600px] lg:flex-none relative">
             <div className="p-4 border-b border-gray-100 flex justify-between items-center">
                 <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                     <Activity className="w-5 h-5 text-teal-600" /> {currentSessionTitle || 'New Consultation'}
@@ -88,15 +89,12 @@ const ChatWindow = ({
             {/* Chat Messages */}
             <div
                 ref={chatContainerRef}
-                className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50/50"
+                className="flex-1 overflow-y-auto p-4 lg:p-6 pb-40 lg:pb-6 space-y-5 bg-gray-50/50"
             >
                 {messages.map((msg, index) => (
                     <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`flex gap-3 max-w-[80%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === 'user' ? 'bg-teal-600 text-white' : 'bg-white border border-gray-200 text-teal-600'}`}>
-                                {msg.role === 'user' ? <User className="w-5 h-5" /> : <Stethoscope className="w-5 h-5" />}
-                            </div>
-                            <div className={`p-4 rounded-2xl shadow-sm ${msg.role === 'user' ? 'bg-teal-600 text-white rounded-tr-none' : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'}`}>
+                        <div className="max-w-[85%] lg:max-w-[75%]">
+                            <div className={`px-4 py-3 shadow-sm ${msg.role === 'user' ? 'bg-teal-600 text-white rounded-2xl rounded-br-[4px] shadow-md' : 'bg-white text-gray-800 rounded-2xl rounded-bl-[4px] border border-gray-100'}`}>
                                 {msg.media && (
                                     msg.mediaType?.startsWith('video/') ? (
                                         <video src={msg.media} controls className="max-w-full h-48 object-cover rounded-lg mb-3 border border-white/20" />
@@ -125,12 +123,9 @@ const ChatWindow = ({
                 ))}
                 {isLoading && (
                     <div className="flex justify-start">
-                        <div className="flex gap-3 max-w-[80%]">
-                            <div className="w-8 h-8 rounded-full bg-white border border-gray-200 text-teal-600 flex items-center justify-center flex-shrink-0">
-                                <Stethoscope className="w-5 h-5" />
-                            </div>
-                            <div className="bg-white p-4 rounded-2xl rounded-tl-none border border-gray-100 shadow-sm">
-                                <div className="flex gap-1">
+                        <div className="max-w-[85%] lg:max-w-[75%]">
+                            <div className="bg-white px-5 py-4 rounded-2xl rounded-bl-[4px] border border-gray-100 shadow-sm h-[48px] flex items-center justify-center">
+                                <div className="flex gap-1.5">
                                     <span className="w-2 h-2 bg-teal-400 rounded-full animate-bounce"></span>
                                     <span className="w-2 h-2 bg-teal-400 rounded-full animate-bounce delay-100"></span>
                                     <span className="w-2 h-2 bg-teal-400 rounded-full animate-bounce delay-200"></span>
@@ -143,22 +138,29 @@ const ChatWindow = ({
             </div>
 
             {/* Input Area */}
-            <div className="p-4 bg-white border-t border-gray-100 rounded-b-2xl">
-                <div className="flex gap-2 items-center bg-gray-50 p-2 rounded-xl border border-gray-200 focus-within:border-teal-400 focus-within:ring-4 focus-within:ring-teal-50 transition-all">
+            <div className="absolute lg:static lg:shrink-0 bottom-0 inset-x-0 p-4 pb-6 pt-16 lg:pt-4 bg-gradient-to-t from-white via-white/95 to-transparent lg:bg-none lg:border-t lg:border-gray-100 lg:rounded-b-2xl pointer-events-none z-10">
+                <div className="flex gap-1 items-center bg-white p-1.5 rounded-full shadow-lg border border-gray-200/60 focus-within:border-teal-400 focus-within:ring-4 focus-within:ring-teal-50 transition-all max-w-4xl mx-auto pointer-events-auto">
+                    <button 
+                        onClick={onToggleMobileTools}
+                        className="p-2.5 text-gray-500 hover:text-teal-600 hover:bg-teal-50 rounded-full lg:hidden transition-colors flex-shrink-0"
+                        title="Upload Media or Use Voice"
+                    >
+                        <Plus className="w-6 h-6" />
+                    </button>
                     <input
                         type="text"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                        placeholder="Type your symptoms or ask a question..."
-                        className="flex-1 bg-transparent border-none outline-none focus:outline-none focus:ring-0 shadow-none text-gray-900 placeholder-gray-400 px-2"
+                        placeholder="Type your symptoms..."
+                        className="flex-1 min-w-0 bg-transparent border-none outline-none focus:outline-none focus:ring-0 shadow-none text-gray-900 placeholder-gray-400 px-3 py-2 text-base"
                     />
                     <button
                         onClick={() => handleSend()}
                         disabled={isLoading || (!input.trim() && !selectedFile)}
-                        className="p-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="w-[42px] h-[42px] bg-teal-600 text-white rounded-full flex items-center justify-center hover:bg-teal-700 hover:shadow-lg disabled:shadow-none disabled:opacity-50 disabled:cursor-not-allowed transition-all flex-shrink-0 transform active:scale-95"
                     >
-                        <Send className="w-5 h-5" />
+                        <Send className="w-5 h-5 -ml-1 mt-0.5" />
                     </button>
                 </div>
             </div>

@@ -16,7 +16,7 @@ const LandingPage = ({ onGuestStart, onLogin }) => {
                     </div>
                     <span className="text-2xl font-bold tracking-tight">Dr. Console</span>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="hidden md:flex items-center gap-4">
                     <button
                         onClick={onLogin}
                         className="px-5 py-2 rounded-full border border-white/30 hover:bg-white/10 transition-colors font-medium text-sm flex items-center gap-2"
@@ -64,7 +64,7 @@ const LandingPage = ({ onGuestStart, onLogin }) => {
                         </button>
                     </div>
 
-                    <div className="flex items-center gap-8 text-teal-100 text-sm font-medium pt-8">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-8 text-teal-100 text-sm font-medium pt-8">
                         <div className="flex items-center gap-2">
                             <Bot className="w-5 h-5" />
                             <span>AI-Powered Triage</span>

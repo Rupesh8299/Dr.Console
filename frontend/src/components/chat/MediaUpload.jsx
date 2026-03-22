@@ -126,7 +126,7 @@ const MediaUpload = ({ selectedFile, onFileSelect, onClearFile, fileInputRef }) 
     }, []);
 
     return (
-        <div className="relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 transition-all duration-500 ease-in-out hover:shadow-[0_0_20px_rgba(20,184,166,0.3)] hover:scale-[1.02] hover:border-teal-200">
+        <div className="relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 transition-all duration-500 ease-in-out hover:shadow-[0_0_20px_rgba(20,184,166,0.3)] hover:scale-[1.02] hover:border-teal-200 lg:flex-1 lg:flex lg:flex-col">
             {isExtracting && (
                 <div className="absolute inset-0 bg-white/80 z-10 flex flex-col items-center justify-center rounded-2xl backdrop-blur-sm">
                     <div className="w-8 h-8 border-4 border-teal-200 border-t-teal-600 rounded-full animate-spin mb-2"></div>
@@ -179,7 +179,7 @@ const MediaUpload = ({ selectedFile, onFileSelect, onClearFile, fileInputRef }) 
 
                     <div
                         onClick={() => fileInputRef.current.click()}
-                        className="border-2 border-dashed border-gray-200 rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 ease-out group hover:border-teal-400 hover:bg-teal-50 hover:shadow-lg hover:shadow-teal-100"
+                        className="border-2 border-dashed border-gray-200 rounded-xl p-8 lg:p-4 lg:flex-1 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 ease-out group hover:border-teal-400 hover:bg-teal-50 hover:shadow-lg hover:shadow-teal-100"
                     >
                         <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-white transition-colors duration-300 shadow-sm">
                             <Upload className="w-6 h-6 text-gray-400 group-hover:text-teal-600 transition-colors duration-300" />

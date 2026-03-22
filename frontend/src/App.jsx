@@ -63,8 +63,10 @@ function App() {
         localStorage.removeItem('drConsole_guest_currentSessionId');
         localStorage.removeItem('drConsole_guest_triageLevel');
 
-        // Generate a random session ID for the guest
-        const randomId = crypto.randomUUID();
+        // Generate a random session ID for the guest (fallback for non-HTTPS local testing)
+        const randomId = (window.crypto && window.crypto.randomUUID) 
+            ? window.crypto.randomUUID() 
+            : 'guest-' + Math.random().toString(36).substring(2, 15);
         setGuestSessionId(randomId);
         setView('chat');
     };
