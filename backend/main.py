@@ -5,10 +5,23 @@ from routers import sessions_router, chat_router
 
 app = FastAPI(title="Dr. Console API")
 
+import os
+
+# Allowed origins — add your Vercel frontend URL here (no trailing slash)
+CORS_ORIGINS = [
+    "https://drconsolefrontend.vercel.app",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+# Allow extra origins via env var (comma-separated) for flexibility
+extra = os.getenv("CORS_ORIGINS", "")
+if extra:
+    CORS_ORIGINS += [o.strip() for o in extra.split(",") if o.strip()]
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
