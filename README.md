@@ -80,22 +80,18 @@ npm run dev -- --host  # expose on LAN (access from mobile / other devices)
 
 #### Backend — `backend/.env`
 ```env
-# Google Gemini (legacy / image analysis fallback)
 GEMINI_API_KEY=your_gemini_api_key
-
-# NVIDIA NIM API (primary LLM — openai/gpt-oss-120b)
 NVIDIA_API_KEY=your_nvidia_api_key
-
-# Supabase
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 ```
 
 #### Frontend — `frontend/.env`
 ```env
-# Supabase (public / anon key — safe to expose in browser)
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+# Backend API URL — set to your backend's Vercel HTTPS URL when deployed
+VITE_API_URL=https://your-backend.vercel.app
 ```
 
 > [!NOTE]
