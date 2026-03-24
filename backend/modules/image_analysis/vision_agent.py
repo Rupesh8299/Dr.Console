@@ -6,11 +6,10 @@ import google.generativeai as genai
 from PIL import Image
 from fastapi import UploadFile, HTTPException
 
-from modules.image_analysis.skin_classifier import SkinDiseaseClassifier
-from modules.image_analysis.specialist_classifier import SpecialistClassifier
-
-# -----------------------------------------------------------------------
-# Keyword Map — scans the user's natural language message automatically.
+# Note: TensorFlow classifiers are NOT imported here at the top.
+# They are massive and will crash Vercel cold starts.
+# We defer their import to when they are explicitly called, allowing Vercel 
+# to boot safely and use the Gemini Vision API fallback.
 # The order matters: more specific keywords should come first.
 # -----------------------------------------------------------------------
 KEYWORD_SPECIALIST_MAP = [
@@ -93,11 +92,17 @@ class VisionAgent:
                 tmp.write(contents)
                 tmp_path = tmp.name
 
-            if specialist == "skin":
-                result = SkinDiseaseClassifier.predict(tmp_path)
-                result["specialist"] = "skin"
-            else:
-                result = SpecialistClassifier.predict(tmp_path, specialist)
+            try:
+                if specialist == "skin":
+                    from modules.image_analysis.skin_classifier import SkinDiseaseClassifier
+                    result = SkinDiseaseClassifier.predict(tmp_path)
+                    result["specialist"] = "skin"
+                else:
+                    from modules.image_analysis.specialist_classifier import SpecialistClassifier
+                    result = SpecialistClassifier.predict(tmp_path, specialist)
+            except ImportError:
+                print(f"[VisionAgent] Local classifiers unavailable (missing TensorFlow). Delegating to Cloud API.")
+                result = {"condition": "Unknown", "confidence": 0, "specialist": specialist}
 
             # --- SECRET FALLBACK (Hidden from frontend but overrides response) ---
             if result.get("confidence", 100) < 50:
