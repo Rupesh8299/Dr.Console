@@ -10,3 +10,4 @@ gradio_client
 langgraph
 langchain
 langchain-google-genai
+openai
