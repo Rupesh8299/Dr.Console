@@ -57,12 +57,12 @@ async def chat_endpoint(
         if user_metadata:
              context_instruction = (
                 f"\n\n[User Profile Context]\n"
-                f"Name: {user_metadata.get('full_name', 'Unknown')}\n"
-                f"Age: {user_metadata.get('age', 'Unknown')}\n"
-                f"Gender: {user_metadata.get('gender', 'Unknown')}\n"
-                f"Region: {user_metadata.get('region', 'Unknown')}\n"
-                f"Medical History (Static): {user_metadata.get('medical_history', 'None')}\n"
-                f"Medical Memory (Long-term): {user_metadata.get('medical_summary', 'None')}\n"
+                f"Name: {user_metadata.get('full_name') or 'Unknown'}\n"
+                f"Age: {user_metadata.get('age') or 'Unknown'}\n"
+                f"Gender: {user_metadata.get('gender') or 'Unknown'}\n"
+                f"Region: {user_metadata.get('region') or 'Unknown'}\n"
+                f"Medical History (Static): {user_metadata.get('medical_history') or 'None'}\n"
+                f"Medical Memory (Long-term): {user_metadata.get('medical_summary') or 'None'}\n"
             )
 
         # --- Media Processing (Vision Module) ---
