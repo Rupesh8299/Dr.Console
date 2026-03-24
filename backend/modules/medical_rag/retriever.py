@@ -1,11 +1,30 @@
-
 from config import settings
 from database.supabase_client import supabase
-from langchain_huggingface import HuggingFaceEmbeddings
-# from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
-# Initialize Embedder (Must match loader.py)
-embedder = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+# Vercel-friendly Embedding Fallback (No PyTorch required)
+# We try to use the local HuggingFace embeddings if installed (local dev),
+# but safely fall back to the HuggingFace Inference API when running on Vercel.
+try:
+    from langchain_huggingface import HuggingFaceEmbeddings
+    embedder = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    def get_embedding(text):
+        return embedder.embed_query(text)
+except ImportError:
+    import requests
+    def get_embedding(text):
+        api_url = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
+        # Optional: Use a token if rate restricted, but usually works for basic queries.
+        headers = {} 
+        response = requests.post(api_url, headers=headers, json={"inputs": [text], "options":{"wait_for_model":True}})
+        if response.status_code == 200:
+            res = response.json()
+            # The API returns a list of lists: [[0.1, 0.2, ...]]
+            if isinstance(res, list) and len(res) > 0 and isinstance(res[0], list):
+                return res[0]
+            elif isinstance(res, list) and len(res) > 0 and isinstance(res[0], float):
+                return res
+        print(f"HuggingFace API Fallback Error: {response.text}")
+        return []
 
 async def search_medical_docs(query: str, limit: int = 3):
     """
@@ -13,7 +32,7 @@ async def search_medical_docs(query: str, limit: int = 3):
     """
     try:
         # 1. Generate Embedding for the query
-        query_embedding = embedder.embed_query(query)
+        query_embedding = get_embedding(query)
         
         # 2. Call Supabase RPC function (Vector Search)
         response = supabase.rpc(
