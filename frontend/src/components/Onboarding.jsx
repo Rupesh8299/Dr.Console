@@ -57,7 +57,7 @@ const Onboarding = ({ session, onComplete, existingProfile = null, onCancel = nu
         <div className="min-h-screen bg-gradient-to-br from-teal-50 to-blue-100 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden">
                 <div className="bg-teal-600 p-6 text-white text-center">
-                    <Activity className="w-12 h-12 mx-auto mb-4" />
+                    <img src="/consoleico.png" alt="Dr. Console Logo" className="w-16 h-16 mx-auto mb-4 object-contain" />
                     <h1 className="text-3xl font-bold mb-2">{existingProfile ? 'Edit Profile' : 'Welcome to Dr. Console'}</h1>
                     <p className="text-teal-100">{existingProfile ? 'Update your basic medical details below.' : 'Let\'s get to know you better for personalized care.'}</p>
                 </div>

@@ -53,9 +53,7 @@ const Auth = () => {
                 {/* Left Side: Branding */}
                 <div className="bg-teal-600 p-8 text-white flex flex-col justify-center md:w-1/2">
                     <div className="mb-6">
-                        <div className="bg-white/20 p-3 rounded-xl inline-block mb-4">
-                            <Activity className="w-8 h-8" />
-                        </div>
+                        <img src="/whiteconsoleico.png" alt="Dr. Console Logo" className="w-12 h-12 object-contain mb-4" />
                         <h1 className="text-3xl font-bold mb-2">Dr. Console</h1>
                         <p className="text-teal-100">Your Personal AI Health Assistant.</p>
                     </div>

@@ -4,7 +4,7 @@ import ChatInterface from './components/ChatInterface';
 import Auth from './components/Auth';
 import Onboarding from './components/Onboarding';
 import LandingPage from './components/LandingPage';
-
+import { ArrowLeft } from 'lucide-react';
 function App() {
     const [session, setSession] = useState(null);
     const [profile, setProfile] = useState(null);
@@ -104,12 +104,13 @@ function App() {
             />;
         }
         return (
-            <div className="relative">
+            <div className="relative min-h-screen">
                 <button
                     onClick={() => setView('landing')}
-                    className="absolute top-4 left-4 text-gray-500 hover:text-gray-900 z-50 font-medium"
+                    className="absolute top-4 left-4 md:top-6 md:left-6 p-2.5 rounded-full z-50 transition-all shadow-sm bg-white/20 text-white hover:bg-white/30 backdrop-blur-md md:bg-white md:text-teal-700 md:hover:bg-gray-50 md:shadow-md"
+                    aria-label="Back to Home"
                 >
-                    &larr; Back to Home
+                    <ArrowLeft className="w-5 h-5" />
                 </button>
                 <Auth />
             </div>

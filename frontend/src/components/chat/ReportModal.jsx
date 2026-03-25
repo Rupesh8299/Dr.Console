@@ -1,6 +1,10 @@
 import React, { useRef } from 'react';
 import { X, FileText, Download } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
+const mkdClasses = "leading-relaxed [&>p]:mb-2 [&>ul]:list-disc [&>ul]:ml-5 [&>ol]:list-decimal [&>ol]:ml-5 [&>strong]:font-bold [&>li]:mb-1";
 
 const ReportModal = ({ isOpen, onClose, reportData, patientName, isGenerating }) => {
     const reportRef = useRef();
@@ -10,11 +14,12 @@ const ReportModal = ({ isOpen, onClose, reportData, patientName, isGenerating })
     const handleDownload = () => {
         const element = reportRef.current;
         const opt = {
-            margin: 1,
+            margin: 0.5,
             filename: `DrConsole_Report_${patientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2 },
-            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
+            pagebreak: { mode: ['css', 'legacy'] }
         };
 
         html2pdf().set(opt).from(element).save();
@@ -104,29 +109,39 @@ const ReportModal = ({ isOpen, onClose, reportData, patientName, isGenerating })
 
                             {/* Clinical Note Body */}
                             <div className="space-y-6 text-gray-800 text-sm">
-                                <div>
+                                <div className="break-inside-avoid">
                                     <h4 className="font-bold text-teal-800 border-b border-gray-100 pb-2 mb-3">SUBJECTIVE (S)</h4>
-                                    <p className="leading-relaxed bg-white">{reportData.subjective || 'No subjective symptoms reported.'}</p>
+                                    <div className={`bg-white ${mkdClasses}`}>
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{reportData.subjective || 'No subjective symptoms reported.'}</ReactMarkdown>
+                                    </div>
                                 </div>
 
-                                <div>
+                                <div className="break-inside-avoid">
                                     <h4 className="font-bold text-teal-800 border-b border-gray-100 pb-2 mb-3">OBJECTIVE (O)</h4>
-                                    <p className="leading-relaxed">{reportData.objective || 'No objective findings or test results uploaded.'}</p>
+                                    <div className={mkdClasses}>
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{reportData.objective || 'No objective findings or test results uploaded.'}</ReactMarkdown>
+                                    </div>
                                 </div>
 
-                                <div>
+                                <div className="break-inside-avoid">
                                     <h4 className="font-bold text-teal-800 border-b border-gray-100 pb-2 mb-3">ASSESSMENT (A)</h4>
-                                    <p className="leading-relaxed">{reportData.assessment || 'No assessment could be formulated.'}</p>
+                                    <div className={mkdClasses}>
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{reportData.assessment || 'No assessment could be formulated.'}</ReactMarkdown>
+                                    </div>
                                 </div>
 
-                                <div>
+                                <div className="break-inside-avoid">
                                     <h4 className="font-bold text-teal-800 border-b border-gray-100 pb-2 mb-3">PLAN (P)</h4>
-                                    <p className="leading-relaxed">{reportData.plan || 'No specific plan outlined.'}</p>
+                                    <div className={mkdClasses}>
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{reportData.plan || 'No specific plan outlined.'}</ReactMarkdown>
+                                    </div>
                                 </div>
 
-                                <div className="mt-8 bg-blue-50/50 p-4 border border-blue-100 rounded-lg">
+                                <div className="mt-8 bg-blue-50/50 p-4 border border-blue-100 rounded-lg break-inside-avoid">
                                     <h4 className="font-bold text-blue-900 border-b border-blue-200/50 pb-2 mb-3">AI CLINICAL ASSUMPTION</h4>
-                                    <p className="leading-relaxed text-blue-800 italic">{reportData.ai_assumption || 'Pending AI reasoning.'}</p>
+                                    <div className={`text-blue-800 italic ${mkdClasses}`}>
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{reportData.ai_assumption || 'Pending AI reasoning.'}</ReactMarkdown>
+                                    </div>
                                 </div>
                             </div>
 

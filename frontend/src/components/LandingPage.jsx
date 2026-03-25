@@ -10,10 +10,8 @@ const LandingPage = ({ onGuestStart, onLogin }) => {
 
             {/* Navigation Bar */}
             <nav className="relative z-10 flex items-center justify-between px-6 py-6 max-w-7xl mx-auto">
-                <div className="flex items-center gap-2">
-                    <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
-                        <Activity className="w-6 h-6 text-white" />
-                    </div>
+                <div className="flex items-center gap-3">
+                    <img src="/whiteconsoleico.png" alt="Dr. Console Logo" className="w-10 h-10 object-contain" />
                     <span className="text-2xl font-bold tracking-tight">Dr. Console</span>
                 </div>
                 <div className="hidden md:flex items-center gap-4">

@@ -85,8 +85,8 @@ const ChatHeader = ({ triageLevel, userName, userAvatar, onProfileUpdate, onSign
                         </button>
 
                         <div className="flex items-center gap-2">
-                            <div className={`hidden lg:flex p-2 rounded-lg ${isEmergency ? 'bg-red-500' : 'bg-teal-100'}`}>
-                                <Activity className={`w-6 h-6 ${isEmergency ? 'text-white' : 'text-teal-600'}`} />
+                            <div className="hidden lg:flex pr-2">
+                                <img src={isEmergency ? "/whiteconsoleico.png" : "/consoleico.png"} alt="Logo" className="w-10 h-10 object-contain drop-shadow-sm" />
                             </div>
                             <div>
                                 <h1 className={`text-xl font-bold leading-none ${isEmergency ? 'text-white' : 'text-teal-900'}`}>Dr. Console</h1>
