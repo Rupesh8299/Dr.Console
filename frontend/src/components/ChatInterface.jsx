@@ -8,7 +8,7 @@ import MediaUpload from './chat/MediaUpload';
 import ChatWindow from './chat/ChatWindow';
 import Footer from './chat/Footer';
 import DeleteConfirmationModal from './chat/DeleteConfirmationModal';
-import { LogOut, FileText } from 'lucide-react';
+import { LogOut, FileText, AlertCircle } from 'lucide-react';
 import Onboarding from './Onboarding';
 
 // Legal Components
@@ -69,6 +69,8 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
     
     // Mobile Tools Drawer State
     const [isMobileToolsOpen, setIsMobileToolsOpen] = useState(false);
+    
+    const [isEmptyChatWarningOpen, setIsEmptyChatWarningOpen] = useState(false);
 
     const chatContainerRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -300,6 +302,12 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
     };
 
     const handleGenerateReport = async () => {
+        const hasUserMessages = messages.some(m => m.role === 'user');
+        if (!hasUserMessages) {
+            setIsEmptyChatWarningOpen(true);
+            return;
+        }
+
         setIsReportModalOpen(true);
         setIsGeneratingReport(true);
         setReportData(null); // Clear previous
@@ -683,6 +691,25 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
                         }}
                         onCancel={() => setIsEditingProfile(false)}
                     />
+                </div>
+            )}
+
+            {/* Empty Chat Warning Modal */}
+            {isEmptyChatWarningOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 transition-all duration-300">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center animate-in zoom-in-95 duration-200 fade-in">
+                        <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+                            <AlertCircle className="w-6 h-6 text-amber-600" />
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-900 mb-2">Insufficient Information</h3>
+                        <p className="text-gray-500 mb-6 text-sm">Please describe your symptoms to Doctor Console first before generating a clinical report.</p>
+                        <button 
+                            onClick={() => setIsEmptyChatWarningOpen(false)}
+                            className="w-full py-2.5 bg-teal-600 text-white rounded-xl font-medium hover:bg-teal-700 transition-colors"
+                        >
+                            Okay
+                        </button>
+                    </div>
                 </div>
             )}
         </div>

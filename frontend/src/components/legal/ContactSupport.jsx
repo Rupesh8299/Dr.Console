@@ -14,7 +14,7 @@ const ContactSupport = () => (
                 </div>
                 <div>
                     <div className="font-medium text-gray-900">Email Us</div>
-                    <div className="text-sm text-teal-600">support@drconsole.ai</div>
+                    <div className="text-sm text-teal-600">Rupesh8299@gmail.com</div>
                 </div>
             </div>
 
