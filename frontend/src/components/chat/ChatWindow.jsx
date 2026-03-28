@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Activity, VolumeX, User, Stethoscope, Volume2, Send, BookOpen, ChevronDown, ChevronUp, Plus } from 'lucide-react';
+import { Activity, VolumeX, User, Stethoscope, Volume2, Send, BookOpen, ChevronDown, ChevronUp, Plus, Edit2 } from 'lucide-react';
 
 // --- RAG Sources Panel (collapsible) ---
 const SourcesPanel = ({ sources }) => {
@@ -66,8 +66,12 @@ const ChatWindow = ({
     chatContainerRef,
     currentSessionTitle,
     selectedFile,
-    onToggleMobileTools
+    onToggleMobileTools,
+    onEditSubmit
 }) => {
+    const [editingIndex, setEditingIndex] = useState(null);
+    const [editValue, setEditValue] = useState('');
+
     return (
         <div className="bg-white lg:rounded-2xl lg:shadow-sm lg:border lg:border-gray-100 flex-1 flex flex-col min-h-0 lg:h-[600px] lg:flex-none relative">
             <div className="p-4 border-b border-gray-100 flex justify-between items-center">
@@ -92,32 +96,80 @@ const ChatWindow = ({
                 className="flex-1 overflow-y-auto p-4 lg:p-6 pb-40 lg:pb-6 space-y-5 bg-gray-50/50"
             >
                 {messages.map((msg, index) => (
-                    <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className="max-w-[85%] lg:max-w-[75%]">
-                            <div className={`px-4 py-3 shadow-sm ${msg.role === 'user' ? 'bg-teal-600 text-white rounded-2xl rounded-br-[4px] shadow-md' : 'bg-white text-gray-800 rounded-2xl rounded-bl-[4px] border border-gray-100'}`}>
-                                {msg.media && (
-                                    msg.mediaType?.startsWith('video/') ? (
-                                        <video src={msg.media} controls className="max-w-full h-48 object-cover rounded-lg mb-3 border border-white/20" />
-                                    ) : (
-                                        <img src={msg.media} alt="User upload" className="max-w-full h-48 object-cover rounded-lg mb-3 border border-white/20" />
-                                    )
-                                )}
-                                <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                                    {renderFormattedText(msg.content)}
-                                </p>
-
-                                {/* Voice + Sources row (AI messages only) */}
-                                {msg.role === 'assistant' && (
-                                    <>
-                                        <button onClick={() => speak(msg.content)} className="mt-2 text-teal-600 hover:text-teal-800 opacity-50 hover:opacity-100 transition-opacity">
-                                            <Volume2 className="w-4 h-4" />
+                    <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} group`}>
+                        <div className="max-w-[85%] lg:max-w-[75%] relative flex items-center gap-2">
+                            
+                            {/* Message Bubble or Edit Area */}
+                            {msg.role === 'user' && editingIndex === index ? (
+                                <div className="bg-white border-2 border-teal-500 rounded-2xl p-3 shadow-md w-full min-w-[280px]">
+                                    <textarea 
+                                        className="w-full text-sm text-gray-800 focus:outline-none resize-none min-h-[80px]"
+                                        value={editValue}
+                                        onChange={(e) => setEditValue(e.target.value)}
+                                        autoFocus
+                                    />
+                                    <div className="flex justify-end gap-2 mt-2">
+                                        <button 
+                                            onClick={() => setEditingIndex(null)}
+                                            className="px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+                                        >
+                                            Cancel
                                         </button>
+                                        <button 
+                                            onClick={() => {
+                                                if(editValue.trim() !== msg.content) {
+                                                    onEditSubmit(index, editValue.trim());
+                                                }
+                                                setEditingIndex(null);
+                                            }}
+                                            className="px-3 py-1.5 text-xs bg-teal-600 text-white hover:bg-teal-700 rounded-lg transition-colors"
+                                        >
+                                            Save & Send
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Edit Button (Left of User Bubble) */}
+                                    {msg.role === 'user' && (
+                                        <button 
+                                            onClick={() => {
+                                                setEditingIndex(index);
+                                                setEditValue(msg.content);
+                                            }}
+                                            className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-full opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                                            title="Edit Message & Branch Chat"
+                                        >
+                                            <Edit2 className="w-4 h-4" />
+                                        </button>
+                                    )}
 
-                                        {/* RAG Sources Panel */}
-                                        <SourcesPanel sources={msg.ragSources} />
-                                    </>
-                                )}
-                            </div>
+                                    <div className={`px-4 py-3 shadow-sm ${msg.role === 'user' ? 'bg-teal-600 text-white rounded-2xl rounded-br-[4px] shadow-md' : 'bg-white text-gray-800 rounded-2xl rounded-bl-[4px] border border-gray-100'}`}>
+                                        {msg.media && (
+                                            msg.mediaType?.startsWith('video/') ? (
+                                                <video src={msg.media} controls className="max-w-full h-48 object-cover rounded-lg mb-3 border border-white/20" />
+                                            ) : (
+                                                <img src={msg.media} alt="User upload" className="max-w-full h-48 object-cover rounded-lg mb-3 border border-white/20" />
+                                            )
+                                        )}
+                                        <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                                            {renderFormattedText(msg.content)}
+                                        </p>
+
+                                        {/* Voice + Sources row (AI messages only) */}
+                                        {msg.role === 'assistant' && (
+                                            <>
+                                                <button onClick={() => speak(msg.content)} className="mt-2 text-teal-600 hover:text-teal-800 opacity-50 hover:opacity-100 transition-opacity">
+                                                    <Volume2 className="w-4 h-4" />
+                                                </button>
+
+                                                {/* RAG Sources Panel */}
+                                                <SourcesPanel sources={msg.ragSources} />
+                                            </>
+                                        )}
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 ))}

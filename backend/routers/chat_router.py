@@ -1,11 +1,12 @@
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Header, BackgroundTasks
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Header, BackgroundTasks, Depends
 import io
 import json
 from config import settings
 from database.supabase_client import supabase
 from modules.thinking_brain.deep_reasoning import process_chat, generate_title
 from modules.image_analysis.vision_agent import VisionAgent
+from auth_module.auth_service import get_user_id
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -236,6 +237,32 @@ async def generate_report_endpoint(request: ReportRequest):
             conversation_history=request.messages,
             user_profile=request.user_profile
         )
-        return report_data
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate report: {str(e)}")
+
+@router.delete("/branch")
+async def branch_chat(session_id: str, keep_count: int, user_id: str = Depends(get_user_id)):
+    """
+    Truncates a chat session to branch off a previous message.
+    It fetches all messages in chronological order, and deletes all messages from index `keep_count` onwards.
+    """
+    if user_id == "guest" or not supabase:
+        return {"status": "success", "message": "Guest session memory cleared locally."}
+        
+    try:
+        # Fetch ordered messages to accurately determine sequence
+        result = supabase.table("conversations").select("id").eq("session_id", session_id).eq("user_id", user_id).order("created_at", desc=False).execute()
+        messages = result.data
+        
+        if len(messages) > keep_count:
+            # Get IDs of messages to delete (everything at keep_count and beyond)
+            ids_to_delete = [msg["id"] for msg in messages[keep_count:]]
+            
+            if ids_to_delete:
+                supabase.table("conversations").delete().in_("id", ids_to_delete).execute()
+                print(f"[Chat Router] Branched session {session_id}. Deleted {len(ids_to_delete)} trailing messages.")
+                
+        return {"status": "success", "deleted_count": len(messages) - keep_count if len(messages) > keep_count else 0}
+    except Exception as e:
+        print(f"Failed to branch chat: {e}")
+        raise HTTPException(status_code=500, detail="Failed to truncate conversation history.")

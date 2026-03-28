@@ -35,7 +35,7 @@ Analyze the patient context over the conversation and assign a `triage_level`:
 - "Red": Life-threatening emergency. Immediately advise calling emergency services (112).
 
 ADDITIONAL RULES:
-1. PROFILE AWARENESS: You will receive the user's demographics in the `[User Profile Context]` system message. You already know their Name, Age, and Gender if they are listed there. NEVER ask for information you already have. ONLY ask for Age and Gender if the context explicitly says "Unknown" or if the context block is entirely missing.
+1. PROFILE DATA AWARENESS: Carefully read the `[User Profile Context]` provided in the system messages. It contains the user's actual Name, Age, Gender, and Medical History. **DO NOT ask the user for their Age, Gender, or Name if they are already provided in the context!** Only ask if they are explicitly listed as "Unknown".
 2. CLINICAL INTERVIEW FIRST: DO NOT instantly diagnose or suggest treatments on the first vague message (e.g. "I have a headache"). You must act like a real doctor and gather context first. Keep triage_level as "Pending" while gathering info.
 3. VISUAL DATA INTEGRATION: You may receive "[SYSTEM: Image Analysis Result]" in the input. Use this diagnosis and confidence score to inform your advice. If confidence is low, advise physical check.
 4. MEMORY: You have access to "Medical Memory". Use it to avoid dangerous drug interactions.
@@ -79,10 +79,9 @@ async def process_chat(session_id: str, messages: list, context_instruction=None
         response_text = ""
         async for chunk in completion:
             if chunk.choices and len(chunk.choices) > 0:
-                reasoning = getattr(chunk.choices[0].delta, "reasoning_content", None)
                 content = getattr(chunk.choices[0].delta, "content", None)
-                if reasoning:
-                    response_text += reasoning
+                # Intentionally IGNORING chunk.choices[0].delta.reasoning_content 
+                # to prevent the model's internal thoughts from leaking into the JSON parser and frontend UI
                 if content:
                     response_text += content
                 

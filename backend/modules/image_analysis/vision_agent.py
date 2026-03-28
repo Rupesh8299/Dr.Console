@@ -92,6 +92,63 @@ class VisionAgent:
                 tmp.write(contents)
                 tmp_path = tmp.name
 
+            # --- 1. PRELIMINARY MEDICAL RELEVANCE CHECK ---
+            try:
+                import base64
+                import requests
+                from config import settings
+                
+                # Using standard open instead of PIL to avoid Windows file lock (WinError 32)
+                with open(tmp_path, "rb") as f:
+                    base64_image = base64.b64encode(f.read()).decode('utf-8')
+                
+                url = "https://integrate.api.nvidia.com/v1/chat/completions"
+                headers = {
+                    "Authorization": f"Bearer {settings.NVIDIA_API_KEY}",
+                    "Content-Type": "application/json"
+                }
+                
+                check_prompt = "Act as a medical triage filter. Is this image related to a medical condition, human body part, skin, medical report, injury, or medical instrument/pill? Reply with EXACTLY 'YES' or 'NO' and nothing else."
+                payload = {
+                    "model": "google/gemma-3-27b-it", # Nvidia Vision Model
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": check_prompt},
+                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
+                            ]
+                        }
+                    ],
+                    "max_tokens": 10,
+                    "temperature": 0.1,
+                    "stream": False
+                }
+                
+                response = requests.post(url, headers=headers, json=payload, timeout=10)
+                if response.status_code == 200:
+                    data = response.json()
+                    check_text = data["choices"][0]["message"]["content"].strip().upper()
+                    is_medical = check_text.startswith("YES")
+                    
+                    if not is_medical:
+                        os.remove(tmp_path)
+                        await file.seek(0)
+                        print(f"[VisionAgent] Rejected non-medical image. AI said: {check_text}")
+                        return {
+                            "specialist": "none",
+                            "condition": "Non-Medical Image",
+                            "confidence": 100,
+                            "warning": "The uploaded image does not appear to be medically relevant. Please describe your symptoms or provide a clear medical image.",
+                            "is_high_risk": False
+                        }
+                else:
+                    print(f"[VisionAgent] Nvidia Filter returned status {response.status_code}")
+            except Exception as filter_e:
+                print(f"[VisionAgent] Medical filter skipped due to error: {filter_e}")
+                pass
+            # ----------------------------------------------
+
             try:
                 if specialist == "skin":
                     from modules.image_analysis.skin_classifier import SkinDiseaseClassifier

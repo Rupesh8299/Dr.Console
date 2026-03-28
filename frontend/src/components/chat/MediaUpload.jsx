@@ -14,10 +14,10 @@ const MediaUpload = ({ selectedFile, onFileSelect, onClearFile, fileInputRef }) 
             video.preload = 'metadata';
             video.playsInline = true;
             video.muted = true;
-            
+
             const url = URL.createObjectURL(videoFile);
             video.src = url;
-            
+
             video.onloadedmetadata = () => {
                 // Seek to 25% of the video duration or 1 second, whichever is smaller
                 const seekTime = Math.min(video.duration * 0.25, 1.0);
@@ -30,7 +30,7 @@ const MediaUpload = ({ selectedFile, onFileSelect, onClearFile, fileInputRef }) 
                 canvas.height = video.videoHeight;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
+
                 canvas.toBlob((blob) => {
                     URL.revokeObjectURL(url);
                     if (blob) {
@@ -76,7 +76,7 @@ const MediaUpload = ({ selectedFile, onFileSelect, onClearFile, fileInputRef }) 
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
             streamRef.current = stream;
             setIsCameraOpen(true);
-            
+
             // Allow state to render the video element first
             setTimeout(() => {
                 if (videoRef.current) {
@@ -105,7 +105,7 @@ const MediaUpload = ({ selectedFile, onFileSelect, onClearFile, fileInputRef }) 
             canvas.height = video.videoHeight;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
+
             canvas.toBlob((blob) => {
                 if (blob) {
                     const file = new File([blob], "captured_photo.jpg", { type: "image/jpeg" });
@@ -140,22 +140,22 @@ const MediaUpload = ({ selectedFile, onFileSelect, onClearFile, fileInputRef }) 
             {isCameraOpen ? (
                 <div className="mb-4 flex flex-col items-center">
                     <div className="relative w-full rounded-xl overflow-hidden bg-black mb-3 border-2 border-teal-100 shadow-inner">
-                        <video 
-                            ref={videoRef} 
-                            autoPlay 
-                            playsInline 
+                        <video
+                            ref={videoRef}
+                            autoPlay
+                            playsInline
                             className="w-full h-48 object-cover"
                         ></video>
                         <canvas ref={canvasRef} className="hidden"></canvas>
                     </div>
                     <div className="flex gap-3 w-full">
-                        <button 
+                        <button
                             onClick={stopCamera}
                             className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors"
                         >
                             Cancel
                         </button>
-                        <button 
+                        <button
                             onClick={capturePhoto}
                             className="flex-1 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium flex justify-center items-center gap-2 transition-colors shadow-md shadow-teal-200"
                         >
@@ -196,14 +196,14 @@ const MediaUpload = ({ selectedFile, onFileSelect, onClearFile, fileInputRef }) 
                     />
 
                     <div className="grid grid-cols-2 gap-3 mt-4">
-                        <button 
+                        <button
                             onClick={startCamera}
                             title="Open Camera"
                             className="p-3 rounded-lg bg-gray-50 flex justify-center text-gray-600 transition-all duration-300 hover:bg-teal-50 hover:text-teal-600 hover:shadow-md hover:shadow-teal-100 hover:-translate-y-0.5"
                         >
                             <Camera className="w-5 h-5" />
                         </button>
-                        <button 
+                        <button
                             onClick={() => fileInputRef.current.click()}
                             title="Choose Document"
                             className="p-3 rounded-lg bg-gray-50 flex justify-center text-gray-600 transition-all duration-300 hover:bg-teal-50 hover:text-teal-600 hover:shadow-md hover:shadow-teal-100 hover:-translate-y-0.5"

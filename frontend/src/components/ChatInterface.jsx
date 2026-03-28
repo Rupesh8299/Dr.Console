@@ -342,6 +342,37 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
         }
     };
 
+    const handleEditSubmit = async (index, newText) => {
+        if (!newText.trim() || isGuest) return;
+
+        // 1. Truncate Frontend State Immediately
+        const truncatedHistory = messages.slice(0, index);
+        setMessages(truncatedHistory);
+
+        // 2. Truncate Backend Database History
+        if (currentSessionId) {
+            try {
+                const sessionStr = await supabase.auth.getSession();
+                const headers = {};
+                if (sessionStr?.data?.session?.access_token) {
+                    headers['Authorization'] = `Bearer ${sessionStr.data.session.access_token}`;
+                }
+                
+                await fetch(`${API_URL}/chat/branch?session_id=${currentSessionId}&keep_count=${index}`, {
+                    method: 'DELETE',
+                    headers
+                });
+            } catch (err) {
+                console.error("Failed to branch chat on backend:", err);
+            }
+        }
+
+        // 3. Resend the Edited Message
+        // By calling handleSend with manualInput, it reads the freshly queued state
+        // and appends the new text exactly where the old one was.
+        handleSend(newText);
+    };
+
     const handleSend = async (manualInput = null) => {
         const textToSend = manualInput || input;
 
@@ -644,6 +675,7 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
                                     currentSessionTitle={isGuest ? 'Temporary Consultation' : currentSessionTitle}
                                     selectedFile={selectedFile}
                                     onToggleMobileTools={() => setIsMobileToolsOpen(!isMobileToolsOpen)}
+                                    onEditSubmit={handleEditSubmit}
                                 />
                             </div>
                         </div>
