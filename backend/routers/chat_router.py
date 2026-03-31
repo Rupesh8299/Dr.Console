@@ -237,6 +237,7 @@ async def generate_report_endpoint(request: ReportRequest):
             conversation_history=request.messages,
             user_profile=request.user_profile
         )
+        return report_data
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate report: {str(e)}")
 
