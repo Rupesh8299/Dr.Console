@@ -240,7 +240,7 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
                 console.log("🎤 Voice Input Received:", transcript);
                 setInput(transcript);
                 // Use ref so we always call the latest handleSend (avoids stale closure)
-                handleSendRef.current?.(transcript);
+                handleSendRef.current?.(transcript, true);
             };
 
             recognitionRef.current.onend = () => {
@@ -373,7 +373,7 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
         handleSend(newText);
     };
 
-    const handleSend = async (manualInput = null) => {
+    const handleSend = async (manualInput = null, isVoiceInput = false) => {
         const textToSend = manualInput || input;
 
         if ((!textToSend.trim() && !selectedFile)) {
@@ -441,7 +441,10 @@ const ChatInterface = ({ session, profile, onProfileUpdate, onSignOut, guestSess
             }
 
             setMessages(prev => [...prev, { role: 'assistant', content: botResponse, ragSources }]);
-            speak(botResponse);
+            
+            if (isVoiceInput) {
+                speak(botResponse);
+            }
 
         } catch (error) {
             console.error('❌ Error in handleSend:', error);
